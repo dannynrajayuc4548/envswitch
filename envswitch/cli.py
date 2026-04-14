@@ -3,70 +3,71 @@
 import click
 from envswitch.storage import load_profiles, save_profiles, get_profile, set_profile, delete_profile
 from envswitch.cli_export import export_cmd
+from envswitch.cli_copy import copy_cmd, rename_cmd
+from envswitch.cli_merge import merge_cmd
+from envswitch.cli_validate import validate_cmd
 
 
 @click.group()
-@click.version_option()
-def cli() -> None:
+def cli():
     """envswitch — quickly switch between named environment variable profiles."""
+    pass
 
 
 @cli.command("list")
-def list_cmd() -> None:
+def list_cmd():
     """List all available profiles."""
     profiles = load_profiles()
     if not profiles:
         click.echo("No profiles found.")
         return
-    for name in sorted(profiles):
-        count = len(profiles[name])
-        click.echo(f"  {name} ({count} var{'s' if count != 1 else ''})")
+    for name in profiles:
+        click.echo(name)
 
 
 @cli.command("show")
-@click.argument("profile_name")
-def show_cmd(profile_name: str) -> None:
+@click.argument("profile")
+def show_cmd(profile: str):
     """Show all variables in a profile."""
-    profile = get_profile(profile_name)
-    if profile is None:
-        raise click.ClickException(f"Profile '{profile_name}' not found.")
-    if not profile:
-        click.echo(f"Profile '{profile_name}' is empty.")
-        return
-    for key, value in sorted(profile.items()):
-        click.echo(f"  {key}={value}")
+    variables = get_profile(profile)
+    if variables is None:
+        click.echo(f"Profile {profile!r} not found.", err=True)
+        raise SystemExit(1)
+    for key, value in variables.items():
+        click.echo(f"{key}={value}")
 
 
 @cli.command("set")
-@click.argument("profile_name")
+@click.argument("profile")
 @click.argument("key")
 @click.argument("value")
-def set_cmd(profile_name: str, key: str, value: str) -> None:
+def set_cmd(profile: str, key: str, value: str):
     """Set a variable in a profile."""
-    set_profile(profile_name, key, value)
-    click.echo(f"Set {key}={value} in profile '{profile_name}'.")
+    set_profile(profile, key, value)
+    click.echo(f"Set {key} in profile {profile!r}.")
 
 
 @cli.command("delete")
-@click.argument("profile_name")
-@click.option("--key", "-k", default=None, help="Delete a specific key instead of the whole profile.")
-def delete_cmd(profile_name: str, key: str) -> None:
-    """Delete a profile or a specific key within a profile."""
+@click.argument("profile")
+@click.option("--yes", is_flag=True, help="Skip confirmation prompt.")
+def delete_cmd(profile: str, yes: bool):
+    """Delete a profile."""
+    if not yes:
+        click.confirm(f"Delete profile {profile!r}?", abort=True)
     profiles = load_profiles()
-    if profile_name not in profiles:
-        raise click.ClickException(f"Profile '{profile_name}' not found.")
-    if key:
-        if key not in profiles[profile_name]:
-            raise click.ClickException(f"Key '{key}' not found in profile '{profile_name}'.")
-        del profiles[profile_name][key]
-        save_profiles(profiles)
-        click.echo(f"Deleted key '{key}' from profile '{profile_name}'.")
-    else:
-        delete_profile(profile_name)
-        click.echo(f"Deleted profile '{profile_name}'.")
+    if profile not in profiles:
+        click.echo(f"Profile {profile!r} not found.", err=True)
+        raise SystemExit(1)
+    del profiles[profile]
+    save_profiles(profiles)
+    click.echo(f"Deleted profile {profile!r}.")
 
 
 cli.add_command(export_cmd)
+cli.add_command(copy_cmd)
+cli.add_command(rename_cmd)
+cli.add_command(merge_cmd)
+cli.add_command(validate_cmd)
 
 
 if __name__ == "__main__":
