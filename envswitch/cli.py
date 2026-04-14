@@ -1,87 +1,72 @@
-"""CLI entry point for envswitch."""
+"""Main CLI entry point for envswitch."""
 
 import click
-from envswitch.storage import (
-    load_profiles,
-    save_profiles,
-    get_profile,
-    set_profile,
-    delete_profile,
-    list_profiles,
-)
+from envswitch.storage import load_profiles, save_profiles, get_profile, set_profile, delete_profile
+from envswitch.cli_export import export_cmd
 
 
 @click.group()
-def cli():
+@click.version_option()
+def cli() -> None:
     """envswitch — quickly switch between named environment variable profiles."""
-    pass
 
 
 @cli.command("list")
-def list_cmd():
+def list_cmd() -> None:
     """List all available profiles."""
-    profiles = list_profiles()
+    profiles = load_profiles()
     if not profiles:
         click.echo("No profiles found.")
         return
-    for name in profiles:
-        click.echo(name)
+    for name in sorted(profiles):
+        count = len(profiles[name])
+        click.echo(f"  {name} ({count} var{'s' if count != 1 else ''})")
 
 
 @cli.command("show")
 @click.argument("profile_name")
-def show_cmd(profile_name):
-    """Show all environment variables in a profile."""
+def show_cmd(profile_name: str) -> None:
+    """Show all variables in a profile."""
     profile = get_profile(profile_name)
     if profile is None:
-        click.echo(f"Profile '{profile_name}' not found.", err=True)
-        raise SystemExit(1)
+        raise click.ClickException(f"Profile '{profile_name}' not found.")
+    if not profile:
+        click.echo(f"Profile '{profile_name}' is empty.")
+        return
     for key, value in sorted(profile.items()):
-        click.echo(f"{key}={value}")
+        click.echo(f"  {key}={value}")
 
 
 @cli.command("set")
 @click.argument("profile_name")
 @click.argument("key")
 @click.argument("value")
-def set_cmd(profile_name, key, value):
-    """Set a variable in a profile (creates profile if it doesn't exist)."""
-    profiles = load_profiles()
-    if profile_name not in profiles:
-        profiles[profile_name] = {}
-    profiles[profile_name][key] = value
-    save_profiles(profiles)
+def set_cmd(profile_name: str, key: str, value: str) -> None:
+    """Set a variable in a profile."""
+    set_profile(profile_name, key, value)
     click.echo(f"Set {key}={value} in profile '{profile_name}'.")
 
 
 @cli.command("delete")
 @click.argument("profile_name")
-@click.option("--yes", is_flag=True, help="Skip confirmation prompt.")
-def delete_cmd(profile_name, yes):
-    """Delete a profile entirely."""
-    if not yes:
-        click.confirm(f"Delete profile '{profile_name}'?", abort=True)
-    deleted = delete_profile(profile_name)
-    if not deleted:
-        click.echo(f"Profile '{profile_name}' not found.", err=True)
-        raise SystemExit(1)
-    click.echo(f"Profile '{profile_name}' deleted.")
+@click.option("--key", "-k", default=None, help="Delete a specific key instead of the whole profile.")
+def delete_cmd(profile_name: str, key: str) -> None:
+    """Delete a profile or a specific key within a profile."""
+    profiles = load_profiles()
+    if profile_name not in profiles:
+        raise click.ClickException(f"Profile '{profile_name}' not found.")
+    if key:
+        if key not in profiles[profile_name]:
+            raise click.ClickException(f"Key '{key}' not found in profile '{profile_name}'.")
+        del profiles[profile_name][key]
+        save_profiles(profiles)
+        click.echo(f"Deleted key '{key}' from profile '{profile_name}'.")
+    else:
+        delete_profile(profile_name)
+        click.echo(f"Deleted profile '{profile_name}'.")
 
 
-@cli.command("export")
-@click.argument("profile_name")
-@click.option("--shell", default="bash", type=click.Choice(["bash", "fish"]), help="Shell syntax.")
-def export_cmd(profile_name, shell):
-    """Print export statements for a profile (eval-friendly)."""
-    profile = get_profile(profile_name)
-    if profile is None:
-        click.echo(f"Profile '{profile_name}' not found.", err=True)
-        raise SystemExit(1)
-    for key, value in sorted(profile.items()):
-        if shell == "fish":
-            click.echo(f"set -x {key} {value}")
-        else:
-            click.echo(f"export {key}={value}")
+cli.add_command(export_cmd)
 
 
 if __name__ == "__main__":
