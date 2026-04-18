@@ -35,6 +35,11 @@ envswitch use staging
 envswitch list
 ```
 
+**Show variables in a profile:**
+```bash
+envswitch show staging
+```
+
 **Remove a profile:**
 ```bash
 envswitch remove staging
