@@ -1,6 +1,5 @@
-"""Main CLI entry point for envswitch."""
-
 import click
+
 from envswitch.storage import load_profiles, save_profiles, get_profile, set_profile, delete_profile
 from envswitch.cli_export import export_cmd
 from envswitch.cli_copy import copy_cmd, rename_cmd
@@ -15,6 +14,12 @@ from envswitch.cli_compare import compare_cmd
 from envswitch.cli_pin import pin_cmd
 from envswitch.cli_import_export import file_cmd
 from envswitch.cli_schedule import schedule_cmd
+from envswitch.cli_alias import alias_cmd
+from envswitch.cli_env_apply import apply_cmd
+from envswitch.cli_encrypt import encrypt_cmd
+from envswitch.cli_lint import lint_cmd
+from envswitch.cli_watch import watch_cmd
+from envswitch.cli_group import group_cmd
 
 
 @click.group()
@@ -41,8 +46,8 @@ def show_cmd(profile):
     if data is None:
         click.echo(f"Profile '{profile}' not found.", err=True)
         raise SystemExit(1)
-    for key, value in data.items():
-        click.echo(f"{key}={value}")
+    for k, v in data.items():
+        click.echo(f"{k}={v}")
 
 
 @cli.command("set")
@@ -52,7 +57,7 @@ def show_cmd(profile):
 def set_cmd(profile, key, value):
     """Set a variable in a profile."""
     set_profile(profile, key, value)
-    click.echo(f"Set {key}={value} in profile '{profile}'.")
+    click.echo(f"Set {key} in '{profile}'.")
 
 
 @cli.command("delete")
@@ -81,3 +86,9 @@ cli.add_command(compare_cmd, "compare")
 cli.add_command(pin_cmd, "pin")
 cli.add_command(file_cmd, "file")
 cli.add_command(schedule_cmd, "schedule")
+cli.add_command(alias_cmd, "alias")
+cli.add_command(apply_cmd, "apply")
+cli.add_command(encrypt_cmd, "encrypt")
+cli.add_command(lint_cmd, "lint")
+cli.add_command(watch_cmd, "watch")
+cli.add_command(group_cmd, "group")
