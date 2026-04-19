@@ -38,6 +38,16 @@ def test_export_missing_profile(runner, tmp_path):
     assert "Error" in result.output
 
 
+def test_export_writes_valid_json(runner, tmp_path):
+    out = tmp_path / "out.json"
+    with patch("envswitch.import_export_file.load_profiles", return_value=SAMPLE):
+        result = runner.invoke(file_cmd, ["export", str(out)])
+    assert result.exit_code == 0
+    data = json.loads(out.read_text())
+    assert "envswitch_profiles" in data
+    assert set(data["envswitch_profiles"].keys()) == {"dev", "prod"}
+
+
 def test_import_success(runner, tmp_path):
     f = tmp_path / "in.json"
     f.write_text(json.dumps({"envswitch_profiles": {"staging": {"X": "1"}}}))
