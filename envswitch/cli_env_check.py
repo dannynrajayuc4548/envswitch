@@ -27,6 +27,12 @@ def check_cmd():
 )
 def check_run(threshold: float, exact: bool):
     """Show profiles that match the current environment variables."""
+    if not 0.0 <= threshold <= 1.0:
+        raise click.BadParameter(
+            f"Threshold must be between 0.0 and 1.0, got {threshold}",
+            param_hint="'--threshold'",
+        )
+
     effective_threshold = 1.0 if exact else threshold
     results = check_profiles(threshold=effective_threshold)
 
